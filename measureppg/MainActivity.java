@@ -1,6 +1,4 @@
-/*
-	此類別為建立 fragement 類別
-*/
+
 
 
 package com.example.luolab.measureppg;
@@ -92,33 +90,22 @@ public class MainActivity extends AppCompatActivity {
     {
 
         TextView tabFour = (TextView) LayoutInflater.from(this).inflate(R.layout.custom_tab, null);
-        tabFour.setText("Reg");
+        tabFour.setText("Create an account in database");
         //tabOne.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ppg, 0, 0);
         tabLayout.getTabAt(0).setCustomView(tabFour);
 
-/*
-        TextView tabOne = (TextView) LayoutInflater.from(this).inflate(R.layout.custom_tab, null);
-        tabOne.setText("PPG");
-        //tabOne.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ppg, 0, 0);
-        tabLayout.getTabAt(1).setCustomView(tabOne);
-*/
 
         TextView tabTwo = (TextView) LayoutInflater.from(this).inflate(R.layout.custom_tab, null);
-        tabTwo.setText("Guan");
+        tabTwo.setText("Show statistics");
         //tabOne.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ppg, 0, 0);
         tabLayout.getTabAt(1).setCustomView(tabTwo);
 
-/*
         TextView tabThree = (TextView) LayoutInflater.from(this).inflate(R.layout.custom_tab, null);
-        tabThree.setText("GSR");
+        tabThree.setText("Feedback");
         //tabOne.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ppg, 0, 0);
-        tabLayout.getTabAt(3).setCustomView(tabThree);
-*/
+        tabLayout.getTabAt(2).setCustomView(tabThree);
 
-        TextView tabFive = (TextView) LayoutInflater.from(this).inflate(R.layout.custom_tab, null);
-        tabFive.setText("Data");
-        //tabOne.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ppg, 0, 0);
-        tabLayout.getTabAt(2).setCustomView(tabFive);
+
     }
 
     @Override
@@ -179,9 +166,12 @@ public class MainActivity extends AppCompatActivity {
             else if(getArguments().getInt(ARG_SECTION_NUMBER) == 2)
             {
                 rootView = (new GuanView()).onCreateView(inflater, container, savedInstanceState);
+            }else
+                {
+                rootView = (new Biofeedback()).onCreateView(inflater, container, savedInstanceState);
             }
-            else
-                rootView = (new ShowData()).onCreateView(inflater, container, savedInstanceState);
+
+
             return rootView;
         }
     }
