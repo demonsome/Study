@@ -64,8 +64,7 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.Stack;
 import java.util.zip.Inflater;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+
 
 public class GuanView extends Fragment {
 
@@ -179,8 +178,8 @@ public class GuanView extends Fragment {
     UsbDeviceConnection connection;
 
 
-    private FirebaseDatabase mFirebaseDatabase;
-    private DatabaseReference rawDataRef;
+
+
 
 
 
@@ -391,12 +390,7 @@ public class GuanView extends Fragment {
         return GuanView;
     }
 
-    public void Upload_Firebase(String s,String d)
-    {
-        final FirebaseDatabase database=FirebaseDatabase.getInstance();//取得資料庫連結
-        DatabaseReference myRef=database.getReference(s);//新增資料節點
-        myRef.push().setValue(d);
-    }
+
 
 	// 設定 FFT 點數
     private void handleInputData() {
@@ -677,7 +671,7 @@ public class GuanView extends Fragment {
                 if(data2 < 0)
                     data2 += 256;
 
-                Upload_Firebase("PPG,"+ UsrInfo[0].getText().toString()+','+UsrInfo[1].getText().toString()+','+UsrInfo[2].getText().toString()+','+UsrInfo[3].getText().toString()+','+UsrInfo[4].getText().toString(),'['+Integer.toString(data)+','+Integer.toString(data2));
+
                 G_Series.appendData(new DataPoint(mXPoint++,(data + data2)-450), true, 400);
                 queueData[0][0] = (data + data2) - 450;
                 queueData[0][1] = 0.0;
@@ -869,9 +863,6 @@ public class GuanView extends Fragment {
                                 + "doctor='" + UsrInfo[5].getText().toString()
                                 + "' WHERE id=" + id,Insert_Uri);
 */
-                        // Upload_Firebase("PPG_R_"+dateformat.format(c.getTime()),Arrays.toString(dataQ.toArray(0, endPointer, 0)));
-                        Upload_Firebase("PPG,"+ UsrInfo[0].getText().toString()+','+UsrInfo[1].getText().toString()+','+UsrInfo[2].getText().toString()+','+UsrInfo[3].getText().toString()+','+UsrInfo[4].getText().toString(),'['+PpgToString(dataQ.toArray(0, endPointer, 0)));
-
 
 
 
