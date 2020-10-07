@@ -462,31 +462,10 @@ public class GuanView extends Fragment {
 
                         FPS =  (fftPoints * 1000)/ (int)(timeEnd - timeStart) ;
 
-                        if(sample_arr.length >= 512)
-                            freq_arr = f.fft_energy_squared(sample_arr, 512);
-                        else if (sample_arr.length >= 1024 )
-                            freq_arr = f.fft_energy_squared(sample_arr, 1024);
-                        else
-                            freq_arr = f.fft_energy_squared(sample_arr, 256);
-                        double factor = fftPoints / FPS;          // (N / Fs)
-                        double nMinFactor = 0.75;                 // The frequency corresponding to 45bpm
-                        double nMaxFactor = 2.5;                  // The frequency corresponding to 150bpm
 
-                        int nMin = (int) Math.floor(nMinFactor * factor);
-                        int nMax = (int) Math.ceil(nMaxFactor * factor);
 
-                        double max = freq_arr[nMin];
-                        int pos = nMin;
-                        for(int i =nMin; i <= nMax; i++){
-                            if (freq_arr[i] > max) {
-                                max = freq_arr[i];
-                                pos = i;
-                            }
-                        }
 
-                        double bps = pos / factor;      //Calculate the freq
-                        double bpm = 60.0 * bps;        //Calculate bpm
-                        BPM = Math.round(bpm);
+
                     }
                 }
             }

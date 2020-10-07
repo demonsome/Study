@@ -17,48 +17,7 @@ public class fftLib {
         return arr_out;
     }
 
-    public static double[][] butterfly_4pt(double a_in[][]){
-        double [][] arr_out= {{0,0},{0,0},{0,0},{0,0}};
 
-        int i = 0;
-        while (i<2)
-        {
-            double tmp[][] = butterfly(a_in[i][0], a_in[i][1], a_in[i+2][0], a_in[i+2][1]);
-
-            arr_out[i][0] = tmp[0][0];
-            arr_out[i][1] = tmp[0][1];
-            arr_out[i+2][0] = tmp[1][0];
-            arr_out[i+2][1] = tmp[1][1];
-
-            i++;
-        }
-        return arr_out;
-    }
-
-    public static double[][] butterfly_Npt(double a_in[][], int n){
-        double [][] arr_out= new double[n][2];
-
-        if((n%2) != 0){
-            System.err.println("ERROR : n should be in powers of 2");
-            double ret_arr[][] = {{0.0,0.0}};
-            return ret_arr;
-        }
-
-        int i = 0;
-        int k = n/2;
-        while (i<k)
-        {
-            double tmp[][] = butterfly(a_in[i][0], a_in[i][1], a_in[i+k][0], a_in[i+k][1]);
-
-            arr_out[i][0] = tmp[0][0];
-            arr_out[i][1] = tmp[0][1];
-            arr_out[i+k][0] = tmp[1][0];
-            arr_out[i+k][1] = tmp[1][1];
-
-            i++;
-        }
-        return arr_out;
-    }
 
     public static double[][] spatial_decimation(double a_in[][], int n_points){
         if((n_points%2) != 0){
@@ -112,51 +71,7 @@ public class fftLib {
         return res;
     }
 
-    public static double[][] fft(double[][] x_samples, int points){
-        double [][] s_points = new double[points][2];
-        double [][] x_samples_internal = new double[points][2];
-        x_samples_internal = spatial_decimation(x_samples, points);
 
-        int stages = (int) ( Math.log((double) points) / Math.log(2.0));
-        int ctr = 1;
-
-        while (ctr <= stages){
-            int fact = (int) Math.pow(2, ctr-1);
-
-            for(int i = 0; i < points/2 ; i ++){
-                double a_r, a_i, b_r, b_i;
-                double [][] temp = new double[1][2];
-                double [][] temp_out = new double[2][2];
-
-                int j = 2*i - i % (fact);
-
-                a_r = x_samples_internal[j][0];
-                a_i = x_samples_internal[j][1];
-
-                b_r = x_samples_internal[j + fact][0];
-                b_i = x_samples_internal[j + fact][1];
-
-                //Check the validity of this function
-                int n = j % (fact);
-                temp[0] = nth_root_unity(n, fact*2);
-
-                temp[0] = complex_mult(b_r, temp[0][0], b_i, temp[0][1]);
-
-                b_r = temp[0][0];
-                b_i = temp[0][1];
-
-                temp_out = butterfly(a_r, a_i, b_r, b_i);
-
-                x_samples_internal[j] 	  = temp_out[0];
-                x_samples_internal[j+fact] = temp_out[1];
-
-            }
-            ctr++;
-
-        }
-        s_points = x_samples_internal;
-        return s_points;
-    }
 
     public static double[] fft_energy_squared(double[][] x_samples, int points){
         double [] energy = new double[points];
