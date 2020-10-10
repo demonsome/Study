@@ -7,120 +7,126 @@ package com.example.luolab.measureppg;
 import java.util.Arrays;
 
 public class fftLib {
-    public static double[][] butterfly(double a_r, double a_i, double b_r, double b_i){
-        double[][] arr_out= {{0,0},{0,0}};
+    public static Complex[] fft(Complex[] x) {
+        int n = x.length;
 
-        arr_out[0][0] = a_r + b_r;
-        arr_out[0][1] = a_i + b_i;
-        arr_out[1][0] = a_r - b_r;
-        arr_out[1][1] = a_i - b_i;
-        return arr_out;
-    }
+        // base case
+        if (n == 1) return new Complex[] { x[0] };
 
-
-
-    public static double[][] spatial_decimation(double a_in[][], int n_points){
-        if((n_points%2) != 0){
-            System.err.println("ERROR : bits should be in powers of 2");
-            double ret_arr[][] = {{0.0,0.0}};
-            return ret_arr;
+        // radix 2 Cooley-Tukey FFT
+        if (n % 2 != 0) {
+            throw new IllegalArgumentException("n is not a power of 2");
         }
 
-        double a_out[][] = new double[n_points][2];
-        int bits =(int) ( Math.log((double) n_points) / Math.log(2.0));
+        // compute FFT of even terms
+        Complex[] even = new Complex[n/2];
+        for (int k = 0; k < n/2; k++) {
+            even[k] = x[2*k];
+        }
+        Complex[] evenFFT = fft(even);
 
-        for(int i = 0 ; i < n_points ; i++){
-            int j = getBitReversed(i, bits);
+        // compute FFT of odd terms
+        Complex[] odd  = even;  // reuse the array (to avoid n log n space)
+        for (int k = 0; k < n/2; k++) {
+            odd[k] = x[2*k + 1];
+        }
+        Complex[] oddFFT = fft(odd);
 
-            a_out[i][0] = a_in[j][0];
-            a_out[i][1] = a_in[j][1];
+        // combine
+        Complex[] y = new Complex[n];
+        for (int k = 0; k < n/2; k++) {
+            double kth = -2 * k * Math.PI / n;
+            Complex wk = new Complex(Math.cos(kth), Math.sin(kth));
+            y[k]       = evenFFT[k].plus (wk.times(oddFFT[k]));
+            y[k + n/2] = evenFFT[k].minus(wk.times(oddFFT[k]));
+        }
+        return y;
+    }
+
+    // compute the inverse FFT of x[], assuming its length n is a power of 2
+    public static Complex[] ifft(Complex[] x) {
+        int n = x.length;
+        Complex[] y = new Complex[n];
+
+        // take conjugate
+        for (int i = 0; i < n; i++) {
+            y[i] = x[i].conjugate();
         }
 
-        return a_out;
-    }
+        // compute forward FFT
+        y = fft(y);
 
-    public static int getBitReversed(int num, int bits){
-        int exp = bits - 1;
-        int val = 0;
-        while (exp >= 0){
-            val += num%2 * Math.pow(2.0, (double) exp);
-            num = (int)num/2;
-            exp--;
+        // take conjugate again
+        for (int i = 0; i < n; i++) {
+            y[i] = y[i].conjugate();
         }
 
-        return val;
+        // divide by n
+        for (int i = 0; i < n; i++) {
+            y[i] = y[i].scale(1.0 / n);
+        }
+
+        return y;
+
     }
 
-    public static double[] complex_mult(double re_a, double re_b, double im_a, double im_b){
-        double [] res = {0.0, 0.0};
+    // compute the circular convolution of x and y
+    public static Complex[] cconvolve(Complex[] x, Complex[] y) {
 
-        res[0] = (re_a * re_b) - (im_a * im_b);
-        res[1] = (re_a * im_b) + (re_b * im_a);
+        // should probably pad x and y with 0s so that they have same length
+        // and are powers of 2
+        if (x.length != y.length) {
+            throw new IllegalArgumentException("Dimensions don't agree");
+        }
 
-        return res;
+        int n = x.length;
+
+        // compute FFT of each sequence
+        Complex[] a = fft(x);
+        Complex[] b = fft(y);
+
+        // point-wise multiply
+        Complex[] c = new Complex[n];
+        for (int i = 0; i < n; i++) {
+            c[i] = a[i].times(b[i]);
+        }
+
+        // compute inverse FFT
+        return ifft(c);
     }
 
-    public static double[] nth_root_unity(int n, int N){
-        double [] res = {0.0, 0.0};
-        double theta = 6.28 / N;
-        double omega = n * theta;
 
-        res[0] = Math.cos(omega);
-        res[1] = Math.sin(omega);
+    // compute the linear convolution of x and y
+    public static Complex[] convolve(Complex[] x, Complex[] y) {
+        Complex ZERO = new Complex(0, 0);
 
-        return res;
+        Complex[] a = new Complex[2*x.length];
+        for (int i = 0;        i <   x.length; i++) a[i] = x[i];
+        for (int i = x.length; i < 2*x.length; i++) a[i] = ZERO;
+
+        Complex[] b = new Complex[2*y.length];
+        for (int i = 0;        i <   y.length; i++) b[i] = y[i];
+        for (int i = y.length; i < 2*y.length; i++) b[i] = ZERO;
+
+        return cconvolve(a, b);
     }
 
-
-
-    public static double[] fft_energy_squared(double[][] x_samples, int points){
-        double [] energy = new double[points];
-        double [][] s_points = new double[points][2];
-        double [][] x_samples_internal = new double[points][2];
-        x_samples_internal = spatial_decimation(x_samples, points);
-
-        int stages = (int) ( Math.log((double) points) / Math.log(2.0));
-        int ctr = 1;
-
-        while (ctr <= stages){
-            int fact = (int) Math.pow(2, ctr-1);
-
-            for(int i = 0; i < points/2 ; i ++){
-                double a_r, a_i, b_r, b_i;
-                double [][] temp = new double[1][2];
-                double [][] temp_out = new double[2][2];
-
-                int j = 2*i - i % (fact);
-
-                a_r = x_samples_internal[j][0];
-                a_i = x_samples_internal[j][1];
-
-                b_r = x_samples_internal[j + fact][0];
-                b_i = x_samples_internal[j + fact][1];
-
-                //Check the validity of this function
-                int n = j % (fact);
-                temp[0] = nth_root_unity(n, fact*2);
-
-                temp[0] = complex_mult(b_r, temp[0][0], b_i, temp[0][1]);
-
-                b_r = temp[0][0];
-                b_i = temp[0][1];
-
-                temp_out = butterfly(a_r, a_i, b_r, b_i);
-
-                x_samples_internal[j] 	  = temp_out[0];
-                x_samples_internal[j+fact] = temp_out[1];
-
-                if(stages == ctr){
-                    energy[j] = Math.pow(x_samples_internal[j][0], 2) + Math.pow(x_samples_internal[j][1], 2);
-                    energy[j+fact] = Math.pow(x_samples_internal[j+fact][0], 2) + Math.pow(x_samples_internal[j+fact][1], 2);
-                }
+    // compute the DFT of x[] via brute force (n^2 time)
+    public static Complex[] dft(Complex[] x) {
+        int n = x.length;
+        Complex ZERO = new Complex(0, 0);
+        Complex[] y = new Complex[n];
+        for (int k = 0; k < n; k++) {
+            y[k] = ZERO;
+            for (int j = 0; j < n; j++) {
+                int power = (k * j) % n;
+                double kth = -2 * power *  Math.PI / n;
+                Complex wkj = new Complex(Math.cos(kth), Math.sin(kth));
+                y[k] = y[k].plus(x[j].times(wkj));
             }
-            ctr++;
-
         }
-        s_points = x_samples_internal;
-        return energy;
+        return y;
     }
+
+
 }

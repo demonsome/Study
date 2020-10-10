@@ -47,7 +47,7 @@ import com.jjoe64.graphview.series.LineGraphSeries;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
+import uk.me.berndporr.iirj.*; //filter library
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -64,6 +64,9 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.Stack;
 import java.util.zip.Inflater;
+
+import static com.example.luolab.measureppg.OutlierRemoval.*;
+import static com.example.luolab.measureppg.PeakDetectAlgo.*;
 
 
 public class GuanView extends Fragment {
@@ -83,11 +86,11 @@ public class GuanView extends Fragment {
     private int state_fft;
     private int FPS;
 
-    private long BPM;
-
+    private double BPM;
+    private double SDNN;
     private Stack<Long> timestampQ;
 
-    private TextView imgProcessed;
+
 
     private boolean first_fft_run;
     private boolean start_fft;
@@ -151,9 +154,12 @@ public class GuanView extends Fragment {
     private boolean Preview_Flag = false;
 
     private TextView[] UsrInfo = new TextView[6];
-
-    private TextView time_tv;
-    private TextView Minute_tv;
+    private TextView tvMin;
+    private TextView tvSec;
+    private TextView tvBPM;
+    private TextView tvSDNN;
+    private TextView tvLF;
+    private TextView tvHF;
 
     public int arg;
 
@@ -259,7 +265,20 @@ public class GuanView extends Fragment {
         mHandler = new Handler(Looper.getMainLooper()){
             @Override
             public void handleMessage(Message inputMessage){
-                UiDataBundle incoming = (UiDataBundle) inputMessage.obj;
+
+                tvBPM.setText("" + BPM);
+                tvMin.setText(Integer.toString(Min_Time_GET));
+                tvSec.setText(Integer.toString(Time_GET));
+
+            }
+        };
+    }
+    /*
+    private void UpdateStatistics() {
+        mHandler = new Handler(Looper.getMainLooper()){
+            @Override
+            public void handleMessage(Message inputMessage){
+
 
                 if(BPM > 0) {
                     if(fftPoints < 1024){
@@ -277,6 +296,7 @@ public class GuanView extends Fragment {
             }
         };
     }
+    */
     public View onCreateView(final LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState){
 
 
@@ -308,11 +328,9 @@ public class GuanView extends Fragment {
         appData =new UiDataBundle();
 
         G_Graph = GuanView.findViewById(R.id.data_chart);
-
-        imgProcessed = GuanView.findViewById(R.id.AvgBPM_tv);
-
-        time_tv = GuanView.findViewById(R.id.time_tv);
-        Minute_tv = GuanView.findViewById(R.id.Minute_tv);
+        tvBPM = GuanView.findViewById(R.id.AvgBPM_tv);
+        tvSec = GuanView.findViewById(R.id.time_tv);
+        tvMin = GuanView.findViewById(R.id.Minute_tv);
 
         setUiInfo_btn = GuanView.findViewById(R.id.SetUsrInfo_btn);
         setUiInfo_btn.setOnClickListener(new View.OnClickListener() {
@@ -398,7 +416,7 @@ public class GuanView extends Fragment {
         if(first_fft_run){
             if(image_processed >= 1024) {
                 fftPoints = 1024;
-                startPointer = 10;
+                startPointer = 0;
                 endPointer = image_processed - 1;
                 start_fft = true;
                 first_fft_run = false;
@@ -449,6 +467,7 @@ public class GuanView extends Fragment {
                         start_fft = false;
 
                         double[][] sample_arr = new double[fftPoints][2];
+                        double[] filtered_data = new double[fftPoints];
                         double[]   input_arr = new double[fftPoints];
                         double[] freq_arr = new double[fftPoints];
                         fftLib f = new fftLib();
@@ -458,9 +477,40 @@ public class GuanView extends Fragment {
 
                         long timeStart  = timestampQ.get(startPointer);
                         long timeEnd    = timestampQ.get(endPointer);
-
+                        double sample_rate = 25;
 
                         FPS =  (fftPoints * 1000)/ (int)(timeEnd - timeStart) ;
+
+                        if(sample_arr.length >= 1024){
+                            Butterworth butterworth = new Butterworth();
+                            butterworth.bandStop(4,sample_rate,0.15,0.5);
+                            butterworth.lowPass(6,sample_rate,6);
+                            for(int j=0; j<sample_arr.length; j++) {
+                                filtered_data[j] = Math.round(butterworth.filter(sample_arr[j][0]));
+                            }
+                            filtered_data = removeDC(filtered_data);
+
+
+                            double[][] res = peakDetect(filtered_data, sample_rate);
+                            double[] locRemoveFixInterval = Arrays.copyOfRange(res[1], 5, res[1].length);
+                            double[] dif = findDiff(locRemoveFixInterval);
+                            double[] nonZeroDif = pruneZero(dif);
+                            nonZeroDif = Arrays.copyOfRange(nonZeroDif, 0, nonZeroDif.length-1);
+                            double arr_z[][] = {nonZeroDif,calculateZscore(nonZeroDif)};
+                            double excludeOutlier[][] = new double[2][nonZeroDif.length];
+                            excludeOutlier = excludeZScoreAbove(arr_z, 3);
+                            double[] intervalMs = sampleToTime(excludeOutlier[0],sample_rate);
+                            double meanInt = calculateMean(intervalMs);
+                            double SDNN = calculateStdev(intervalMs);
+
+                            BPM = 60000/meanInt
+                            ;
+
+
+                        }else{
+                            BPM = sample_arr.length;
+                        }
+
 
 
 
@@ -797,7 +847,7 @@ public class GuanView extends Fragment {
                     try {
                         mXPoint = 0;
                         keep_thread_running = false;
-                        time_tv.setText(Integer.toString(0));
+                        tvSec.setText(Integer.toString(0));
                         new AlertDialog.Builder((Activity) LInflater.getContext()).setMessage("已量完畢，" + '\n' + '\n' + "如需量測別的受測者" + '\n' + "請按setUsrInfo更改")
                                 .setPositiveButton("ok", new DialogInterface.OnClickListener() {
                                     @Override
